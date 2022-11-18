@@ -12,6 +12,10 @@ st.write('<style>div.block-container{padding-top:0rem;}</style>', unsafe_allow_h
 st.markdown("""
 <style>
 
+.stApp {
+        background-image: url("./peyaimage.jpg");
+        background-size: cover;
+
 .table-title {
     font-size:18px !important;
 }
