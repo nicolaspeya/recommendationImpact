@@ -137,10 +137,10 @@ with st.sidebar.expander("Consideraciones Importantes"):
 
 #file = "C:/Users/nicolas.ferrari/Documents/RecoToolOctubre.csv"
 #file = "C:/Users/nicolas.ferrari/Documents/rowordersdata.xlsx"
-file = "C:/Users/nicolas.ferrari/Documents/rowordersdata_v2.xlsx"
-productsWithoutSalesfile = "C:/Users/nicolas.ferrari/Documents/productsSinVentas.xlsx"
+file = "./files/rowordersdata_v2.xlsx"
+productsWithoutSalesfile = "./files/productsSinVentas.xlsx"
 
-partner_file = "C:/Users/nicolas.ferrari/Documents/products_orders_by_partner.xlsx"
+partner_file = "./files/products_orders_by_partner.xlsx"
 
 #file = "C:/Users/nicolas.ferrari/Documents/VP_dataRecoTool.csv"
 # Perform query.
