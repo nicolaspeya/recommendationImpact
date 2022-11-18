@@ -15,6 +15,7 @@ st.markdown("""
 .stApp {
         background-image: url("./peyaimage.jpg");
         background-size: cover;
+        }
 
 .table-title {
     font-size:18px !important;
