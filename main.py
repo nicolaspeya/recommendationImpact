@@ -38,8 +38,8 @@ div[data-testid="metric-container"] {
 section[data-testid="stSidebar"] > div:first-of-type {
 background-color: rgb(93, 192, 207);
 background: rgb(93, 192, 207);
-padding-top:0px;
-margin-top:0px;
+padding-top:-20px;
+margin-top:-20px;
 box-shadow: -2rem 0px 2rem 2rem rgba(0,0,0,0.16);
 
 
@@ -72,8 +72,13 @@ client = bigquery.Client(credentials=credentials)
 st.title("Análisis de Impacto Herramienta Recomendados")
 st.write("El objetivo del análisis es visualizar y evaluar el impacto en productos y ordenes que tuvo la Reco Tool desde mediados de Octubre 2022 hasta mediados de Noviembre 2022")
 
-st.sidebar.title("Navigation")
+# padding-top:-20px;
+# margin-top:-20px;
+# '<p class= "table-title" style= font-size: 600, 
 
+# st.write('<p class= "table-title" style= font-size: 600, "color: black">Detalle de Ordenes de Productos Recomendados Agregados a Catálogo de Partners</p>', unsafe_allow_html=True)
+
+st.sidebar.markdown("<p style= 'font-size:30px; padding-top:-40px; margin-top:-40px'>Navigation</p>", unsafe_allow_html=True)
 
 if 'buttonClick' not in st.session_state:
     st.session_state.disabled = True
@@ -126,6 +131,8 @@ partners_ratio = ["Partner Orders", "Top Partners Ratio", "Lowest Partners Ratio
 st.sidebar.button('Partners Orders-KPI 👇', on_click=partnerstatus, key='partnerInfo')
 partner_choices = st.sidebar.radio('Partners Orders-KPI', partners_ratio, help = 'Ver Info a Nivel Partner sobre Órdenes y Conversión de Productos en Órdenes', disabled=st.session_state.partnerdisabled)
 
+st.sidebar.write('\n')
+st.sidebar.button('Conclusions 👈')
 st.sidebar.write('\n')
 with st.sidebar.expander("Consideraciones Importantes"):
      st.write(""" 
@@ -302,20 +309,44 @@ jscode = JsCode("""
 
 if st.session_state.disabled == False and choices == "Partners con Mayores Ventas":
     
-    top_partners = orders_products.groupby(['country','partnerId','partnerName']).sum('valueUS').reset_index()
-
+    #top_partners = orders_products.groupby(['country','partnerId','partnerName']).sum('valueUS').reset_index()
+    top_partners = orders_products.groupby(['country','partnerId','partnerName']).agg({'valueUS': 'sum', 'totalValue': 'sum', 'Quantity':'sum','gtin': 'nunique', 'orderId':'nunique'}).reset_index()
     #orders_products = orders_products[orders_products['country'].isin(countries_selected)]
-
-    top_partners['orders'] = orders_products.groupby(['country','partnerId','partnerName']).size().values
     
+    top_partners = top_partners.rename(columns={'gtin':'Products','orderId':'Orders'})
+
+    #top_partners['orders'] = orders_products.groupby(['country','partnerId','partnerName']).size().values
+    print(top_partners)
+
+    print(top_partners.columns)
     top_partners['valueUS'] = round(top_partners['valueUS'])
 
     top_partners = top_partners.sort_values('valueUS',ascending=False)[0:30]
 
-    top_partners = top_partners[['country','partnerName','partnerId','valueUS','totalValue','Quantity']]  #.drop('gtin',axis=1)
+    top_partners = top_partners[['country','partnerName','partnerId','valueUS','totalValue','Quantity','Orders','Products']]  #.drop('gtin',axis=1)
 
     top_partners = top_partners.rename(columns={'country':'Country','partnerName':'Partner','partnerId':'PartnerID', 'valueUS': 'SalesValueUSD','totalValue': 'SalesValueLC','Quantity':'SalesQuantity'})
 
+    partnersWithNewProducts = len(top_partners['PartnerID'].unique())
+    newProducts = top_partners['Products'].sum()
+    totalOrders = top_partners['Orders'].sum()
+    GMV = top_partners['SalesValueUSD'].sum()
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
+
+    partners = top_partners['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
     #print(top_partners.columns)
     countries = top_partners['Country'].unique().tolist()
     #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
@@ -323,7 +354,7 @@ if st.session_state.disabled == False and choices == "Partners con Mayores Venta
     #l2 = []
     l2 = countries[:]
 
-    countries_selected = st.multiselect('', l2, default=countries)
+    countries_selected = col5.multiselect('', l2, default=countries)
 
     # top_partners = top_partners.rename(columns = {"totalValue":'valueLC'})
     
@@ -344,15 +375,35 @@ elif st.session_state.disabled == False and choices == "Partners sin Ventas":
     
     partners_sin_ventas = orders_products[orders_products['orderId'] == 0][['country','partnerId','partnerName','gtin','Product']]
     
+    partner_sin_ventas_grouped = partners_sin_ventas.groupby(['partnerName']).agg({'partnerId':'sum','gtin':'nunique','Product':'nunique'})
     countries = partners_sin_ventas['country'].unique().tolist()
     #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
 
+    partnersWithNewProducts = len(partner_sin_ventas_grouped)
+    newProducts = partner_sin_ventas_grouped['Product'].sum()
+    totalOrders = 0
+    GMV = 0
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
     #l2 = []
     l2 = countries[:]
 
     partners_sin_ventas = partners_sin_ventas.rename(columns={'country':'Country','partnerName':'Partner','partnerId':'PartnerID', 'gtin':'Gtin'}) 
 
-    countries_selected = st.multiselect('', l2, default=countries)
+    partners = partners_sin_ventas['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
+
+    countries_selected = col5.multiselect('', l2, default=countries)
     gb = GridOptionsBuilder.from_dataframe(partners_sin_ventas)
     gridOptions = gb.build()
     gb.configure_pagination()
@@ -371,22 +422,44 @@ elif st.session_state.disabled == False and choices == "Productos con Mayores Ve
     top_products['orders'] = orders_products.groupby(['country','partnerName','partnerId', 'Product', 'gtin']).size().values
 
     top_products = top_products.reset_index()
-    countries = top_products['country'].unique().tolist()
-    #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
 
-    #l2 = []
-    l2 = countries[:]
-
-    countries_selected = st.multiselect('', l2, default=countries)
+    
+   
     #top_products = top_products.reset_index()
 
-    top_products = top_products.sort_values('valueUS',ascending=False)
+    top_products = top_products.sort_values('valueUS',ascending=False)[0:200]
 
-    #top_products = top_products.rename(columns = {"totalValue":'valueLC'})
+    partnersWithNewProducts = len(top_products['partnerId'].unique())
+    newProducts =  200 #orders_products[orders_products.isin(partnersWithNewProducts)] #.groupby('partnerId').nunique('gtin')['gtin'].sum()
+    totalOrders = top_products['orders'].sum()
+    GMV = top_products['valueUS'].sum()
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
 
+    countries = top_products['country'].unique().tolist()
+    #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
+    
     top_products = top_products[['Product','gtin', 'valueUS',  'totalValue' , 'orders',  'Quantity', 'partnerName','partnerId','country']]
 
     top_products = top_products.rename(columns={'gtin':'Gtin','country':'Country','partnerName':'Partner','partnerId':'PartnerID', 'orders':'Orders', 'valueUS': 'SalesValueUSD','totalValue': 'SalesValueLC','Quantity':'SalesQuantity'})
+
+    partners = top_products['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
+    #l2 = []
+    l2 = countries[:]
+
+    countries_selected = col5.multiselect('', l2, default=countries)
+    #top_products = top_products.rename(columns = {"totalValue":'valueLC'})
 
     gb = GridOptionsBuilder.from_dataframe(top_products)
     gridOptions = gb.build()
@@ -409,12 +482,38 @@ elif st.session_state.disabled == False and choices == "Productos sin Ventas en 
     countries = non_orders_products['country'].unique().tolist()
     #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
 
+    partnersNewProducts = non_orders_products['partnerId'].nunique()
+    newProducts = non_orders_products.groupby(['partnerId','gtin']).size().values.sum()
+    GMV = 0
     non_orders_products = non_orders_products.rename(columns={'product_name':'Product','gtin':'Gtin', 'businessCategory':'Category','country':'Country','partner_Name':'Partner','partnerId':'PartnerID', 'orders':'Orders', 'valueUS': 'SalesValueUSD','totalValue': 'SalesValueLC','Quantity':'SalesQuantity'})
+
+
+    totalOrders = 0
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
 
     #l2 = []
     l2 = countries[:]
 
-    countries_selected = st.multiselect('', l2, default=countries)
+    partners = non_orders_products['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
+    #l2 = []
+    l2 = countries[:]
+
+    countries_selected = col5.multiselect('', l2, default=countries)
+
+    #countries_selected = st.multiselect('', l2, default=countries)
     gb = GridOptionsBuilder.from_dataframe(non_orders_products)
     gridOptions = gb.build()
     gb.configure_pagination()
@@ -432,23 +531,43 @@ elif st.session_state.disabled == False and choices == "Productos sin Ventas en 
 elif st.session_state.disabled == True and st.session_state.partnerdisabled == False and partner_choices == 'Partner Orders':
     #country	businessCategory	partnerId	partnerName	ratio	newProducts	numberOfOrders
     
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
+    
     partner_data = partners_data.rename(columns={'numberOfOrders':'Orders'}) 
 
     partner_data['ratio'] = round(partner_data['ratio'],2)
     partner_data = partner_data.sort_values('Orders',ascending=False)
+  
     countries = partner_data['country'].unique().tolist()
-    #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
-
-    #l2 = []
-    l2 = countries[:]
-
-    countries_selected = st.multiselect('', l2, default=countries)
 
     partner_data = partner_data[['partnerName', 'partnerId', 'Orders','newProducts','ratio', 'country','businessCategory']] 
 
     partner_data = partner_data.rename(columns={'businessCategory':'Category','country':'Country','ratio':'Ratio', 'newProducts':'Products', 'partnerName':'Partner','partnerId':'PartnerID'})
 
-    
+    partners = partner_data['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
+    #l2 = []
+    l2 = countries[:]
+
+    countries_selected = col5.multiselect('', l2, default=countries)
+    #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
+
+    #l2 = []
+   # l2 = countries[:]
+
+   # countries_selected = col6.multiselect('', l2, default=countries)
+
     gb = GridOptionsBuilder.from_dataframe(partner_data)
     gridOptions = gb.build()
     gb.configure_pagination()
@@ -463,31 +582,62 @@ elif st.session_state.disabled == True and st.session_state.partnerdisabled == F
 
 elif st.session_state.disabled == True and st.session_state.partnerdisabled == False and partner_choices == 'Top Partners Ratio':
     
+
+    #l2 = []
+   
     
     partner_data = partners_data.rename(columns={'numberOfOrders':'Orders'}) 
 
     partner_data['ratio'] = round(partner_data['ratio'],2)
     partner_data = partner_data.sort_values('ratio',ascending=False)[0:15]
+    #GMV = partner_data['valueUS'].sum()
+    partners = partner_data['partnerId'].unique().tolist()
 
+    GMV = orders_products[orders_products['partnerId'].isin(partners)]['valueUS'].sum()
+
+    partner_data = partner_data[['partnerName', 'partnerId', 'ratio', 'Orders','newProducts', 'country','businessCategory']] 
     countries = partner_data['country'].unique().tolist()
+    partner_data = partner_data.rename(columns={'businessCategory':'Category','country':'Country','ratio':'Ratio', 'newProducts':'Products', 'partnerName':'Partner','partnerId':'PartnerID'})
+
+    
     #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
 
+    partnersWithNewProducts = partner_data['PartnerID'].nunique()
+    newProducts = partner_data['Products'].sum()
+    totalOrders = int(partner_data['Orders'].sum())
+    
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
+
+    partners = partner_data['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
     #l2 = []
     l2 = countries[:]
 
-    countries_selected = st.multiselect('', l2, default=countries)
+    countries_selected = col5.multiselect('', l2, default=countries)
+    l2 = countries[:]
 
-    partner_data = partner_data[['partnerName', 'partnerId', 'ratio', 'Orders','newProducts', 'country','businessCategory']] 
+   # countries_selected = st.multiselect('', l2, default=countries)
 
-    partner_data = partner_data.rename(columns={'businessCategory':'Category','country':'Country','ratio':'Ratio', 'newProducts':'Products', 'partnerName':'Partner','partnerId':'PartnerID'})
-
+   
     gb = GridOptionsBuilder.from_dataframe(partner_data)
     gridOptions = gb.build()
     gb.configure_pagination()
     
     gridOptions['getRowStyle'] = jscode
    
-    st.write('<p class= "table-title" style= font-size: 600, "color: black">Partners con Mejor ratio de Nuevas Ordenes por Producto Agregado</p>',  unsafe_allow_html=True)
+    st.write('<p class= "table-title" style= font-size: 600, "color: black">Top 15 de Partners con Mejor ratio de Nuevas Ordenes por Producto Agregado</p>',  unsafe_allow_html=True)
     AgGrid(partner_data, height=500,
     gridOptions=gridOptions,
     enable_enterprise_modules=True,
@@ -497,23 +647,54 @@ elif st.session_state.disabled == True and st.session_state.partnerdisabled == F
     
     partner_data = partners_data.rename(columns={'numberOfOrders':'Orders'}) 
 
+    
     countries = partner_data['country'].unique().tolist()
     #citieslist = data[data['country_name'] == selected_country]['city'].unique().tolist()
 
-    #l2 = []
-    l2 = countries[:]
-
-    countries_selected = st.multiselect('', l2, default=countries)
-
     partner_data['ratio'] = round(partner_data['ratio'],2)
     partner_data = partner_data.sort_values('ratio')[0:15]
+
+    partners = partner_data['partnerId'].unique().tolist()
+    GMV = orders_products[orders_products['partnerId'].isin(partners)]['valueUS'].sum()
 
     partner_data = partner_data[['partnerName', 'partnerId', 'ratio', 'Orders','newProducts', 'country','businessCategory']] 
 
     partner_data = partner_data.rename(columns={'businessCategory':'Category','country':'Country','ratio':'Ratio', 'newProducts':'Products', 'partnerName':'Partner','partnerId':'PartnerID'})
 
+
+    partnersWithNewProducts = partner_data['PartnerID'].nunique()
+    newProducts = partner_data['Products'].sum()
+    totalOrders = int(partner_data['Orders'].sum())
+    
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Partners", partnersWithNewProducts, help='Partners que agregaron productos')
+    col2.metric("Productos", newProducts, help='Nuevos Vendor Products en Catálogo de Partners')
+    col3.metric("Ordenes Totales", totalOrders, help='Ordenes Totales generados con los Productos Agregados')
+    col4.metric("GMV USD", round(GMV), help='Total GMV en USD generado con Nuevos Productos')
+
+    #l2 = []
+    l2 = countries[:]
+
+    partners = partner_data['Partner'].unique().tolist()
+    l3 = []
+    l3 = partners[:]
+    l3.insert(0, "All Partners")
+    #l3.append('All Partners')
+    default_ix = l3.index('All Partners')
+        
+    col5,col6 = st.columns([3,1])
+    partner = col6.selectbox('Check For Specific Partner', l3, index= default_ix)
+    #l2 = []
+    l2 = countries[:]
+
+    countries_selected = col5.multiselect('', l2, default=countries)
+
+    #countries_selected = st.multiselect('', l2, default=countries)
+
    
-    st.write('<p class= "table-title" style= font-size: 600, "color: black">Partners con Menor ratio de Nuevas Ordenes por Producto Agregado</p>', unsafe_allow_html=True)
+   
+    st.write('<p class= "table-title" style= font-size: 600, color: blue>15 Partners con menor ratio de Nuevas Ordenes por Producto Agregado</p>', unsafe_allow_html=True)
     gb = GridOptionsBuilder.from_dataframe(partner_data)
     gridOptions = gb.build()
     gb.configure_pagination()
