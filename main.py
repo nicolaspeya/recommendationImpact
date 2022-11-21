@@ -427,7 +427,7 @@ elif st.session_state.disabled == False and choices == "Productos con Mayores Ve
    
     #top_products = top_products.reset_index()
     total_products_orders = len(top_products)
-    st.write(total_products_orders)
+    
     top_sellers = int(0.2 * total_products_orders)
     top_products = top_products.sort_values('valueUS',ascending=False)[0:top_sellers]
 
