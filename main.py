@@ -358,7 +358,7 @@ if st.session_state.disabled == False and choices == "Partners con Mayores Venta
 
     # top_partners = top_partners.rename(columns = {"totalValue":'valueLC'})
     
-    st.write('<p class= "table-title" style= font-size: 600, "color: black">Parnters con mayores ventas en el Período</p>', unsafe_allow_html=True)
+    st.write('<p class= "table-title" style= font-size: 600, "color: black">Top 30 Partners con mayores ventas en el Período</p>', unsafe_allow_html=True)
 
     gb = GridOptionsBuilder.from_dataframe(top_partners)
     gridOptions = gb.build()
@@ -410,7 +410,7 @@ elif st.session_state.disabled == False and choices == "Partners sin Ventas":
 
     gridOptions['getRowStyle'] = jscode
 
-    st.write('<p class= "table-title" style= font-size: 600, "color: black">Parnters que no tuvieron ventas en el Período</p>', unsafe_allow_html=True)
+    st.write('<p class= "table-title" style= font-size: 600, "color: black">Partners que no tuvieron ventas en el Período</p>', unsafe_allow_html=True)
     AgGrid(partners_sin_ventas, height=500,
     gridOptions=gridOptions,
     enable_enterprise_modules=True,
@@ -426,11 +426,13 @@ elif st.session_state.disabled == False and choices == "Productos con Mayores Ve
     
    
     #top_products = top_products.reset_index()
-
-    top_products = top_products.sort_values('valueUS',ascending=False)[0:200]
+    total_products_orders = len(top_products)
+    st.write(total_products_orders)
+    top_sellers = int(0.2 * total_products_orders)
+    top_products = top_products.sort_values('valueUS',ascending=False)[0:top_sellers]
 
     partnersWithNewProducts = len(top_products['partnerId'].unique())
-    newProducts =  200 #orders_products[orders_products.isin(partnersWithNewProducts)] #.groupby('partnerId').nunique('gtin')['gtin'].sum()
+    newProducts =  top_sellers#orders_products[orders_products.isin(partnersWithNewProducts)] #.groupby('partnerId').nunique('gtin')['gtin'].sum()
     totalOrders = top_products['orders'].sum()
     GMV = top_products['valueUS'].sum()
     col1, col2, col3, col4 = st.columns(4)
@@ -466,7 +468,7 @@ elif st.session_state.disabled == False and choices == "Productos con Mayores Ve
     gb.configure_pagination()
     gridOptions['getRowStyle'] = jscode
 
-    st.write('<p class= "table-title" style= font-size: 600, "color: black">Vendor Products con mayores Ventas en el Período</p>', unsafe_allow_html=True)
+    st.write('<p class= "table-title" style= font-size: 600, "color: black">Vendor Products con mayores Ventas en el Período(Top 20%)</p>', unsafe_allow_html=True)
     AgGrid(top_products, height=500,
     gridOptions=gridOptions,
     enable_enterprise_modules=True,
